@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useGameStore } from '../stores/gameStore'
 import { getTimeLabel, getTimeIcon } from '../utils/gameUtils'
+import gameConfig from '../config/gameConfig'
 
 const emit = defineEmits<{
   (e: 'toggle-save'): void
@@ -11,6 +13,10 @@ const emit = defineEmits<{
 }>()
 
 const gameStore = useGameStore()
+
+const daysRemaining = computed(() => 
+  Math.max(0, gameConfig.totalDays - gameStore.day + 1)
+)
 </script>
 
 <template>
@@ -23,7 +29,7 @@ const gameStore = useGameStore()
     <div class="status-info">
       <div class="status-item day">
         <span class="status-icon">📅</span>
-        <span>第 {{ gameStore.day }} 天</span>
+        <span>第 {{ gameStore.day }}/{{ gameConfig.totalDays }} 天</span>
       </div>
       <div class="status-item time">
         <span class="status-icon">{{ getTimeIcon(gameStore.timeSlot) }}</span>
@@ -37,6 +43,15 @@ const gameStore = useGameStore()
         <span class="status-icon">💰</span>
         <span>{{ gameStore.resources }} 代币</span>
       </div>
+      <div class="status-item collection" @click.stop="emit('toggle-cards')">
+        <span class="status-icon">🎴</span>
+        <span>{{ gameStore.collectionRatePercent }}% 收藏</span>
+      </div>
+    </div>
+
+    <div v-if="gameStore.eventHint" class="event-hint-bar">
+      <span class="hint-icon">💡</span>
+      <span class="hint-text">{{ gameStore.eventHint }}</span>
     </div>
 
     <div class="toolbar">
@@ -61,6 +76,7 @@ const gameStore = useGameStore()
 
 <style scoped>
 .top-bar {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -103,10 +119,59 @@ const gameStore = useGameStore()
   border-radius: var(--radius-md);
   font-size: 14px;
   font-weight: 500;
+  cursor: default;
+  transition: all 0.2s;
+}
+
+.status-item.collection {
+  cursor: pointer;
+  background: var(--accent-light);
+  color: var(--accent-primary);
+}
+
+.status-item.collection:hover {
+  background: var(--accent-primary);
+  color: white;
 }
 
 .status-icon {
   font-size: 18px;
+}
+
+.event-hint-bar {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px;
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  color: white;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.event-hint-bar .hint-icon {
+  font-size: 16px;
 }
 
 .toolbar {
@@ -144,6 +209,7 @@ const gameStore = useGameStore()
     width: 100%;
     justify-content: space-around;
     gap: 8px;
+    flex-wrap: wrap;
   }
   
   .status-item {
@@ -153,6 +219,17 @@ const gameStore = useGameStore()
   
   .game-title h1 {
     font-size: 18px;
+  }
+
+  .event-hint-bar {
+    position: static;
+    transform: none;
+    order: 4;
+    width: 100%;
+    justify-content: center;
+    margin-top: 8px;
+    font-size: 12px;
+    animation: none;
   }
 }
 </style>

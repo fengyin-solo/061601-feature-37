@@ -5,6 +5,7 @@ export const gameConfig: GameConfig = {
   initialResources: 100,
   maxActionsPerDay: 3,
   daysPerWeek: 7,
+  totalDays: 30,
   maxAffinity: 100,
   minAffinity: -50,
   maxMood: 100,
@@ -305,7 +306,88 @@ export const gameConfig: GameConfig = {
     { type: 'work', name: '打工', icon: '💼', description: '辛苦工作赚取代币', energyCost: 2 }
   ],
 
-  workRewards: { min: 15, max: 35 }
+  workRewards: { min: 15, max: 35 },
+
+  endings: [
+    {
+      grade: 'S',
+      title: '完美恋人',
+      description: '你与心爱之人的故事将被永远传颂。每一张卡牌都见证着你们的点点滴滴，这是最完美的结局。',
+      minCollectionRate: 0.9,
+      minAffinity: 80
+    },
+    {
+      grade: 'A',
+      title: '甜蜜恋人',
+      description: '你们的感情深厚，大多数回忆都被珍藏于心。虽然有些小遗憾，但这依然是美好的结局。',
+      minCollectionRate: 0.7,
+      minAffinity: 60
+    },
+    {
+      grade: 'B',
+      title: '好友以上',
+      description: '你们的关系超越了普通朋友，有许多美好的回忆。如果再给你一点时间，或许能更进一步？',
+      minCollectionRate: 0.5,
+      minAffinity: 40
+    },
+    {
+      grade: 'C',
+      title: '普通朋友',
+      description: '你们维持着普通朋友的关系，有一些愉快的回忆，但似乎还不够深入。',
+      minCollectionRate: 0.3,
+      minAffinity: 20
+    },
+    {
+      grade: 'D',
+      title: '擦肩而过',
+      description: '你们只是彼此生命中的过客。也许下一次，能有不同的故事...',
+      minCollectionRate: 0,
+      minAffinity: 0
+    }
+  ],
+
+  milestoneRewards: [
+    {
+      id: 'milestone_20',
+      name: '初入收藏',
+      description: '恭喜你开启了收藏之旅！获得 50 代币奖励',
+      collectionRate: 0.2,
+      resourceReward: 50,
+      icon: '🎁'
+    },
+    {
+      id: 'milestone_40',
+      name: '收藏新手',
+      description: '收藏进度不错！获得 100 代币奖励',
+      collectionRate: 0.4,
+      resourceReward: 100,
+      icon: '🎀'
+    },
+    {
+      id: 'milestone_60',
+      name: '收藏达人',
+      description: '你已经收集了大半卡牌！获得 150 代币奖励',
+      collectionRate: 0.6,
+      resourceReward: 150,
+      icon: '🏆'
+    },
+    {
+      id: "milestone_80",
+      name: '收藏大师',
+      description: '太厉害了！获得 200 代币奖励',
+      collectionRate: 0.8,
+      resourceReward: 200,
+      icon: '👑'
+    },
+    {
+      id: 'milestone_100',
+      name: '收藏传说',
+      description: '完美收藏！所有卡牌尽在掌握。获得 300 代币奖励',
+      collectionRate: 1,
+      resourceReward: 300,
+      icon: '⭐'
+    }
+  ]
 }
 
 export default gameConfig

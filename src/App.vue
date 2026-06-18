@@ -11,6 +11,8 @@ import SaveModal from './components/SaveModal.vue'
 import CardCollection from './components/CardCollection.vue'
 import HistoryPanel from './components/HistoryPanel.vue'
 import GiftModal from './components/GiftModal.vue'
+import EndingModal from './components/EndingModal.vue'
+import RewardModal from './components/RewardModal.vue'
 
 const gameStore = useGameStore()
 const saveStore = useSaveStore()
@@ -72,6 +74,8 @@ onMounted(() => {
     <CardCollection v-if="showCards" @close="showCards = false" />
     <HistoryPanel v-if="showHistory" @close="showHistory = false" />
     <GiftModal v-if="showGiftModal" @close="showGiftModal = false" />
+    <EndingModal />
+    <RewardModal />
   </div>
 </template>
 

@@ -83,11 +83,32 @@ export interface ActionConfig {
   energyCost: number
 }
 
+export type EndingGrade = 'S' | 'A' | 'B' | 'C' | 'D'
+
+export interface EndingConfig {
+  grade: EndingGrade
+  title: string
+  description: string
+  minCollectionRate: number
+  minAffinity: number
+}
+
+export interface MilestoneReward {
+  id: string
+  name: string
+  description: string
+  collectionRate: number
+  resourceReward?: number
+  cardReward?: string
+  icon: string
+}
+
 export interface GameConfig {
   title: string
   initialResources: number
   maxActionsPerDay: number
   daysPerWeek: number
+  totalDays: number
   maxAffinity: number
   minAffinity: number
   maxMood: number
@@ -101,4 +122,6 @@ export interface GameConfig {
   events: GameEventConfig[]
   actions: ActionConfig[]
   workRewards: { min: number; max: number }
+  endings: EndingConfig[]
+  milestoneRewards: MilestoneReward[]
 }

@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { TimeOfDay, ActionType, GameEventConfig, EventChoice } from '../types/game'
+import type { TimeOfDay, ActionType, GameEventConfig, EventChoice, EndingGrade, MilestoneReward } from '../types/game'
 import gameConfig from '../config/gameConfig'
 import {
   clamp,
@@ -52,6 +52,13 @@ export const useGameStore = defineStore('game', () => {
   const currentEvent = ref<GameEventConfig | null>(null)
   const showEventModal = ref(false)
   const darkMode = ref(false)
+  const gameEnded = ref(false)
+  const endingGrade = ref<EndingGrade | null>(null)
+  const showEndingModal = ref(false)
+  const showRewardModal = ref(false)
+  const currentReward = ref<MilestoneReward | null>(null)
+  const claimedMilestones = ref<string[]>([])
+  const eventHint = ref<string | null>(null)
 
   const characters = ref<CharacterState[]>(
     gameConfig.characters.map(c => ({
@@ -72,6 +79,45 @@ export const useGameStore = defineStore('game', () => {
   const unlockedCharacters = computed(() =>
     characters.value.filter(c => c.unlocked)
   )
+
+  const totalCards = computed(() => gameConfig.cards.length)
+
+  const collectionRate = computed(() => {
+    if (totalCards.value === 0) return 0
+    return collectedCards.value.length / totalCards.value
+  })
+
+  const collectionRatePercent = computed(() => Math.round(collectionRate.value * 100))
+
+  function getCharacterCollectionRate(characterId: string): number {
+    const charCards = gameConfig.cards.filter(c => c.characterId === characterId)
+    if (charCards.length === 0) return 0
+    const collected = charCards.filter(c => collectedCards.value.includes(c.id)).length
+    return collected / charCards.length
+  }
+
+  function getNextCardForCharacter(characterId: string) {
+    const charCards = gameConfig.cards.filter(c => c.characterId === characterId)
+    const sortedByRarity = [...charCards].sort((a, b) => {
+      const rarityOrder = ['common', 'rare', 'epic', 'legendary']
+      return rarityOrder.indexOf(a.rarity) - rarityOrder.indexOf(b.rarity)
+    })
+    return sortedByRarity.find(c => !collectedCards.value.includes(c.id)) || null
+  }
+
+  const currentEnding = computed(() => {
+    if (!gameEnded.value) return null
+    const sortedEndings = [...gameConfig.endings].sort((a, b) => 
+      b.minCollectionRate - a.minCollectionRate
+    )
+    const maxAffinity = Math.max(...characters.value.map(c => c.affinity))
+    for (const ending of sortedEndings) {
+      if (collectionRate.value >= ending.minCollectionRate && maxAffinity >= ending.minAffinity) {
+        return ending
+      }
+    }
+    return sortedEndings[sortedEndings.length - 1]
+  })
 
   const currentCharacter = computed(() =>
     characters.value.find(c => c.id === selectedCharacterId.value) || null
@@ -158,7 +204,65 @@ export const useGameStore = defineStore('game', () => {
     if (card && !collectedCards.value.includes(card.id)) {
       collectedCards.value.push(card.id)
       addLog('system', `🎉 获得新卡牌：${card.name}`, characterId)
+      checkMilestoneRewards()
     }
+  }
+
+  function checkMilestoneRewards() {
+    const rate = collectionRate.value
+    for (const milestone of gameConfig.milestoneRewards) {
+      if (rate >= milestone.collectionRate && !claimedMilestones.value.includes(milestone.id)) {
+        claimedMilestones.value.push(milestone.id)
+        if (milestone.resourceReward) {
+          resources.value += milestone.resourceReward
+        }
+        if (milestone.cardReward && !collectedCards.value.includes(milestone.cardReward)) {
+          collectedCards.value.push(milestone.cardReward)
+        }
+        currentReward.value = milestone
+        showRewardModal.value = true
+        addLog('system', `🏆 达成收藏里程碑：${milestone.name}！获得奖励`)
+      }
+    }
+  }
+
+  function updateEventHint() {
+    const rate = collectionRate.value
+    const dayNum = day.value
+
+    if (rate < 0.3) {
+      const remaining = Math.ceil(0.3 * totalCards.value) - collectedCards.value.length
+      eventHint.value = `再收集 ${remaining} 张卡牌可解锁更多剧情`
+    } else if (rate < 0.6) {
+      eventHint.value = '收藏进度不错！继续探索可触发特殊事件'
+    } else if (rate < 0.9) {
+      eventHint.value = '快收集更多卡牌达成完美结局吧！'
+    } else {
+      eventHint.value = '⭐ 传说级收藏！你已经收集了几乎所有卡牌'
+    }
+
+    if (dayNum >= gameConfig.totalDays - 3) {
+      eventHint.value = `距离游戏结束还有 ${gameConfig.totalDays - dayNum} 天，你的结局等级：${getExpectedEndingGrade()}`
+    }
+  }
+
+  function getExpectedEndingGrade(): string {
+    const sortedEndings = [...gameConfig.endings].sort((a, b) => 
+      b.minCollectionRate - a.minCollectionRate
+    )
+    const maxAffinity = Math.max(...characters.value.map(c => c.affinity))
+    const rate = collectionRate.value
+    for (const ending of sortedEndings) {
+      if (rate >= ending.minCollectionRate && maxAffinity >= ending.minAffinity) {
+        return ending.grade + '级'
+      }
+    }
+    return 'D级'
+  }
+
+  function closeRewardModal() {
+    showRewardModal.value = false
+    currentReward.value = null
   }
 
   function updateCharacterMood(characterId: string, change: number) {
@@ -179,6 +283,12 @@ export const useGameStore = defineStore('game', () => {
 
   function nextDay() {
     day.value++
+    
+    if (day.value > gameConfig.totalDays) {
+      endGame()
+      return
+    }
+    
     timeSlot.value = gameConfig.timeSlots[0]
     actionsRemaining.value = gameConfig.maxActionsPerDay
 
@@ -198,6 +308,18 @@ export const useGameStore = defineStore('game', () => {
     })
 
     addLog('system', `🌅 第 ${day.value} 天开始了`)
+    updateEventHint()
+  }
+
+  function endGame() {
+    gameEnded.value = true
+    endingGrade.value = currentEnding.value?.grade || 'D'
+    showEndingModal.value = true
+    addLog('system', `🎬 游戏结束！达成「${currentEnding.value?.title || '未知结局'}」结局`)
+  }
+
+  function restartGame() {
+    resetGame()
   }
 
   function performAction(actionType: ActionType, targetId?: string, giftId?: string) {
@@ -391,6 +513,7 @@ export const useGameStore = defineStore('game', () => {
         collectedCards.value.push(choice.addCardId)
         const card = gameConfig.cards.find(c => c.id === choice.addCardId)
         addLog('system', `🎴 获得卡牌：${card?.name || choice.addCardId}`)
+        checkMilestoneRewards()
       }
     }
 
@@ -426,6 +549,13 @@ export const useGameStore = defineStore('game', () => {
     selectedCharacterId.value = null
     currentEvent.value = null
     showEventModal.value = false
+    gameEnded.value = false
+    endingGrade.value = null
+    showEndingModal.value = false
+    showRewardModal.value = false
+    currentReward.value = null
+    claimedMilestones.value = []
+    eventHint.value = null
 
     characters.value = gameConfig.characters.map(c => ({
       id: c.id,
@@ -442,6 +572,7 @@ export const useGameStore = defineStore('game', () => {
     logIdCounter = 0
 
     addLog('system', '🎮 游戏开始！欢迎来到恋爱物语')
+    updateEventHint()
     checkAndTriggerEvent()
   }
 
@@ -449,6 +580,7 @@ export const useGameStore = defineStore('game', () => {
     if (logs.value.length === 0) {
       addLog('system', '🎮 游戏开始！欢迎来到恋爱物语')
     }
+    updateEventHint()
     checkAndTriggerEvent()
   }
 
@@ -470,10 +602,23 @@ export const useGameStore = defineStore('game', () => {
     currentEvent,
     showEventModal,
     darkMode,
+    gameEnded,
+    endingGrade,
+    showEndingModal,
+    showRewardModal,
+    currentReward,
+    claimedMilestones,
+    eventHint,
+    totalCards,
+    collectionRate,
+    collectionRatePercent,
+    currentEnding,
     addLog,
     saveHistory,
     rollbackToStep,
     getCharacterState,
+    getCharacterCollectionRate,
+    getNextCardForCharacter,
     updateCharacterAffinity,
     updateCharacterMood,
     performAction,
@@ -482,6 +627,11 @@ export const useGameStore = defineStore('game', () => {
     toggleDarkMode,
     resetGame,
     initGame,
-    checkAndTriggerEvent
+    checkAndTriggerEvent,
+    checkMilestoneRewards,
+    updateEventHint,
+    getExpectedEndingGrade,
+    closeRewardModal,
+    restartGame
   }
 })

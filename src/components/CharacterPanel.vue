@@ -6,7 +6,9 @@ import {
   getAffinityColor,
   getAffinityStage,
   getMoodColor,
-  getMoodLabel
+  getMoodLabel,
+  getRarityLabel,
+  getRarityColor
 } from '../utils/gameUtils'
 
 const gameStore = useGameStore()
@@ -14,7 +16,18 @@ const gameStore = useGameStore()
 const charactersWithConfig = computed(() => {
   return gameStore.unlockedCharacters.map(charState => {
     const config = gameConfig.characters.find(c => c.id === charState.id)
-    return { state: charState, config }
+    const collectionRate = gameStore.getCharacterCollectionRate(charState.id)
+    const nextCard = gameStore.getNextCardForCharacter(charState.id)
+    const charCards = gameConfig.cards.filter(c => c.characterId === charState.id)
+    const collectedCount = charCards.filter(c => gameStore.collectedCards.includes(c.id)).length
+    return { 
+      state: charState, 
+      config, 
+      collectionRate,
+      nextCard,
+      collectedCount,
+      totalCount: charCards.length
+    }
   }).filter(item => item.config)
 })
 
@@ -73,6 +86,30 @@ function selectCharacter(id: string) {
             </div>
             <span class="stat-value mood" :style="{ color: getMoodColor(item.state.mood) }">
               {{ getMoodLabel(item.state.mood) }}
+            </span>
+          </div>
+
+          <div class="stat-row collection-row">
+            <span class="stat-label">收藏</span>
+            <div class="progress-bar">
+              <div 
+                class="progress-fill collection-fill"
+                :style="{ width: `${item.collectionRate * 100}%` }"
+              ></div>
+            </div>
+            <span class="stat-value collection-value">
+              {{ item.collectedCount }}/{{ item.totalCount }}
+            </span>
+          </div>
+
+          <div v-if="item.nextCard" class="next-card-hint">
+            <span class="hint-icon">💡</span>
+            <span class="hint-text">
+              下一张：
+              <span class="next-card-rarity" :style="{ color: getRarityColor(item.nextCard.rarity) }">
+                【{{ getRarityLabel(item.nextCard.rarity) }}】
+              </span>
+              ???
             </span>
           </div>
         </div>
@@ -206,6 +243,43 @@ function selectCharacter(id: string) {
 
 .stat-value.mood {
   font-size: 11px;
+}
+
+.collection-row {
+  margin-top: 6px;
+}
+
+.collection-fill {
+  background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+}
+
+.collection-value {
+  font-size: 11px;
+  color: var(--accent-primary);
+}
+
+.next-card-hint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: var(--bg-secondary);
+  border-radius: 6px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.hint-icon {
+  font-size: 14px;
+}
+
+.hint-text {
+  flex: 1;
+}
+
+.next-card-rarity {
+  font-weight: 600;
 }
 
 .character-detail {
