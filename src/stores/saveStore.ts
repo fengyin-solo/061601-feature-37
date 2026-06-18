@@ -84,7 +84,6 @@ export const useSaveStore = defineStore('save', () => {
       gameStore.claimedMilestones = state.claimedMilestones || []
       gameStore.gameEnded = state.gameEnded || false
       gameStore.endingGrade = state.endingGrade || null
-      gameStore.updateEventHint()
       if (gameStore.gameEnded) {
         gameStore.showEndingModal = true
       }

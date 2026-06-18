@@ -58,7 +58,6 @@ export const useGameStore = defineStore('game', () => {
   const showRewardModal = ref(false)
   const currentReward = ref<MilestoneReward | null>(null)
   const claimedMilestones = ref<string[]>([])
-  const eventHint = ref<string | null>(null)
 
   const characters = ref<CharacterState[]>(
     gameConfig.characters.map(c => ({
@@ -88,6 +87,41 @@ export const useGameStore = defineStore('game', () => {
   })
 
   const collectionRatePercent = computed(() => Math.round(collectionRate.value * 100))
+
+  const eventHint = computed(() => {
+    const rate = collectionRate.value
+    const dayNum = day.value
+    const daysLeft = gameConfig.totalDays - dayNum + 1
+
+    if (daysLeft <= 3 && daysLeft > 0) {
+      const grade = getExpectedEndingGrade()
+      return `距离结局还有 ${daysLeft} 天 · 当前 ${grade} · 收藏 ${collectionRatePercent.value}%`
+    }
+
+    if (gameEnded.value) {
+      return `游戏结束 · ${currentEnding.value?.grade || 'D'}级结局 · 收藏 ${collectionRatePercent.value}%`
+    }
+
+    if (rate < 0.3) {
+      const targetCount = Math.ceil(0.3 * totalCards.value)
+      const remaining = targetCount - collectedCards.value.length
+      return `💡 再收集 ${remaining} 张（到 30%）可解锁更多剧情`
+    } else if (rate < 0.5) {
+      const targetCount = Math.ceil(0.5 * totalCards.value)
+      const remaining = targetCount - collectedCards.value.length
+      return `💡 再收集 ${remaining} 张（到 50%）可触发特殊事件`
+    } else if (rate < 0.7) {
+      const targetCount = Math.ceil(0.7 * totalCards.value)
+      const remaining = targetCount - collectedCards.value.length
+      return `💡 再收集 ${remaining} 张（到 70%）可达成 A 级结局`
+    } else if (rate < 0.9) {
+      const targetCount = Math.ceil(0.9 * totalCards.value)
+      const remaining = targetCount - collectedCards.value.length
+      return `💫 再收集 ${remaining} 张（到 90%）可达成 S 级完美结局`
+    } else {
+      return `⭐ 传说级收藏！你已经收集了 ${collectedCards.value.length}/${totalCards.value} 张卡牌`
+    }
+  })
 
   function getCharacterCollectionRate(characterId: string): number {
     const charCards = gameConfig.cards.filter(c => c.characterId === characterId)
@@ -226,26 +260,6 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
-  function updateEventHint() {
-    const rate = collectionRate.value
-    const dayNum = day.value
-
-    if (rate < 0.3) {
-      const remaining = Math.ceil(0.3 * totalCards.value) - collectedCards.value.length
-      eventHint.value = `再收集 ${remaining} 张卡牌可解锁更多剧情`
-    } else if (rate < 0.6) {
-      eventHint.value = '收藏进度不错！继续探索可触发特殊事件'
-    } else if (rate < 0.9) {
-      eventHint.value = '快收集更多卡牌达成完美结局吧！'
-    } else {
-      eventHint.value = '⭐ 传说级收藏！你已经收集了几乎所有卡牌'
-    }
-
-    if (dayNum >= gameConfig.totalDays - 3) {
-      eventHint.value = `距离游戏结束还有 ${gameConfig.totalDays - dayNum} 天，你的结局等级：${getExpectedEndingGrade()}`
-    }
-  }
-
   function getExpectedEndingGrade(): string {
     const sortedEndings = [...gameConfig.endings].sort((a, b) => 
       b.minCollectionRate - a.minCollectionRate
@@ -308,7 +322,6 @@ export const useGameStore = defineStore('game', () => {
     })
 
     addLog('system', `🌅 第 ${day.value} 天开始了`)
-    updateEventHint()
   }
 
   function endGame() {
@@ -555,7 +568,6 @@ export const useGameStore = defineStore('game', () => {
     showRewardModal.value = false
     currentReward.value = null
     claimedMilestones.value = []
-    eventHint.value = null
 
     characters.value = gameConfig.characters.map(c => ({
       id: c.id,
@@ -572,7 +584,6 @@ export const useGameStore = defineStore('game', () => {
     logIdCounter = 0
 
     addLog('system', '🎮 游戏开始！欢迎来到恋爱物语')
-    updateEventHint()
     checkAndTriggerEvent()
   }
 
@@ -580,7 +591,6 @@ export const useGameStore = defineStore('game', () => {
     if (logs.value.length === 0) {
       addLog('system', '🎮 游戏开始！欢迎来到恋爱物语')
     }
-    updateEventHint()
     checkAndTriggerEvent()
   }
 
@@ -629,7 +639,6 @@ export const useGameStore = defineStore('game', () => {
     initGame,
     checkAndTriggerEvent,
     checkMilestoneRewards,
-    updateEventHint,
     getExpectedEndingGrade,
     closeRewardModal,
     restartGame

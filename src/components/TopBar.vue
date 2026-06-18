@@ -49,8 +49,7 @@ const daysRemaining = computed(() =>
       </div>
     </div>
 
-    <div v-if="gameStore.eventHint" class="event-hint-bar">
-      <span class="hint-icon">💡</span>
+    <div class="event-hint-bar">
       <span class="hint-text">{{ gameStore.eventHint }}</span>
     </div>
 
@@ -170,8 +169,8 @@ const daysRemaining = computed(() =>
   }
 }
 
-.event-hint-bar .hint-icon {
-  font-size: 16px;
+.event-hint-bar .hint-text {
+  font-size: 13px;
 }
 
 .toolbar {
